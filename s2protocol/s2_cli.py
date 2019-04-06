@@ -9,13 +9,13 @@ import binascii
 
 import mpyq
 
-import versions
-import diff
-import attributes as _attr
+from s2protocol import versions
+from s2protocol import diff
+from s2protocol import attributes as _attr
 
 import cProfile
 import pstats
-import StringIO
+from io import StringIO
 
 
 class EventFilter(object):
@@ -34,7 +34,11 @@ class JSONOutputFilter(EventFilter):
         self._output = output
 
     def process(self, event):
-        print >> self._output, json.dumps(event, encoding='ISO-8859-1', ensure_ascii=True, indent=4)
+        test = event
+        print(type(event))
+        if type(event) is not dict:
+            test = event
+        print(self._output, json.dumps(event, indent=2))
         return event
 
 
@@ -44,7 +48,7 @@ class NDJSONOutputFilter(EventFilter):
         self._output = output
 
     def process(self, event):
-        print >> self._output, json.dumps(event, encoding='ISO-8859-1', ensure_ascii=True)
+        print(self._output, json.dumps(event))
         return event
 
 
@@ -91,9 +95,9 @@ class StatCollectionFilter(EventFilter):
         return event
 
     def finish(self):
-        print >> sys.stdout, 'Name, Count, Bits'
-        for name, stat in sorted(self._event_stats.iteritems(), key=lambda x: x[1][1]):
-            print >> sys.stdout, '"%s", %d, %d' % (name, stat[0], stat[1] / 8)
+        print('Name, Count, Bits')
+        for name, stat in sorted(self._event_stats.items(), key=lambda x: x[1][1]):
+            print('"%s", %d, %d' % (name, stat[0], stat[1] / 8))
 
 
 def convert_fourcc(fourcc_hex):
@@ -102,7 +106,7 @@ def convert_fourcc(fourcc_hex):
     represpentation to a string.
     """
     s = []
-    for i in xrange(0, 7, 2):
+    for i in range(0, 7, 2):
         n = int(fourcc_hex[i:i+2], 16)
         if n is not 0:
             s.append(chr(n))
@@ -114,15 +118,15 @@ def cache_handle_uri(handle):
     Convert a 'cache handle' from a binary string to a string URI
     """
     handle_hex = binascii.b2a_hex(handle)
-    purpose = convert_fourcc(handle_hex[0:8]) # first 4 bytes
-    region = convert_fourcc(handle_hex[8:16]) # next 4 bytes
+    purpose = convert_fourcc(handle_hex[0:8])  # first 4 bytes
     content_hash = handle_hex[16:]
-  
+    region = convert_fourcc(handle_hex[8:16]) # next 4 bytes
+    string_content_hash = content_hash.decode('ascii')
     uri = ''.join([
         'http://',
         region.lower(),
         '.depot.battle.net:1119/',
-        content_hash.lower(), '.',
+        string_content_hash.lower(), '.',
         purpose.lower()
       ])
     return uri
@@ -246,23 +250,23 @@ def main():
         for f in files:
             captured.append(pattern.match(f).group(1))
             if len(captured) == 8:
-                print >> sys.stdout, captured[0:8]
+                print(sys.stdout, captured[0:8])
                 captured = []
-        print >> sys.stdout, captured
+        print(sys.stdout, captured)
         return
 
     # Diff two protocols
     if args.diff and args.diff is not None:
         version_list = args.diff.split(',')
         if len(version_list) < 2:
-            print >> sys.stderr, "--diff requires two versions separated by comma e.g. --diff=1,2"
+            print(sys.stderr, "--diff requires two versions separated by comma e.g. --diff=1,2")
             sys.exit(1)
         diff.diff(version_list[0], version_list[1])
         return
 
     # Check/test the replay file
     if args.replay_file is None:
-        print >> sys.stderr, ".S2Replay file not specified"
+        print(sys.stderr, ".S2Replay file not specified")
         sys.exit(1)
 
     archive = mpyq.MPQArchive(args.replay_file)
@@ -296,8 +300,8 @@ def main():
     baseBuild = header['m_version']['m_baseBuild']
     try:
         protocol = versions.build(baseBuild)
-    except Exception, e:
-        print >> sys.stderr, 'Unsupported base build: {0} ({1})'.format(baseBuild, str(e))
+    except Exception as e:
+        print(sys.stderr, 'Unsupported base build: {0} ({1})'.format(baseBuild, str(e)))
         sys.exit(1)
 
     # Process game metadata
@@ -362,13 +366,14 @@ def main():
 
     if args.profile:
         pr.disable()
-        print "Profiler Results"
-        print "----------------"
-        s = StringIO.StringIO()
+        print("Profiler Results")
+        print("----------------")
+        s = StringIO()
         sortby = 'cumulative'
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
-        print s.getvalue()
+        print(s.getvalue())
+
 
 if __name__ == '__main__':
     main()

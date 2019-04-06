@@ -501,10 +501,17 @@ def decode_replay_attributes_events(contents):
             value['namespace'] = buffer.read_bits(32)
             value['attrid'] = attrid = buffer.read_bits(32)
             scope = buffer.read_bits(8)
-            value['value'] = buffer.read_aligned_bytes(4)[::-1].strip('\x00')
-            if not scope in attributes['scopes']:
+            try:
+                value['value'] = buffer.read_aligned_bytes(4)[::-1]
+            except:
+                value['value'] = buffer.read_aligned_bytes(4).decode('latin')[::-1]
+            try:
+                value['value'].decode("ascii", 'replace')
+            except:
+                print("break")
+            if scope not in attributes['scopes']:
                 attributes['scopes'][scope] = {}
-            if not attrid in attributes['scopes'][scope]:
+            if attrid not in attributes['scopes'][scope]:
                 attributes['scopes'][scope][attrid] = []
             attributes['scopes'][scope][attrid].append(value)
     return attributes

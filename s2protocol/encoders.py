@@ -20,12 +20,17 @@
 
 import struct
 
+
 class IncompleteError(Exception):
     pass
 
 
+class CorruptedError(Exception):
+    pass
+
+
 class BitPackedBuffer:
-    def __init__(self, output, endian = 'big'):
+    def __init__(self, output, endian='big'):
         self._output = output
         self._next = 0
         self._used_bits = 0
@@ -70,6 +75,7 @@ class BitPackedBuffer:
         for c in data:
             self.write_bits(ord(c), 8)
 
+
 class BitPackedEncoder:
     def __init__(self, output, typeinfos):
         self._buffer = BitPackedBuffer(output)
@@ -107,7 +113,7 @@ class BitPackedEncoder:
         self._buffer.write_aligned_bytes(value)
 
     def _bool(self, value):
-        self._buffer.write_bits(1 if (value != False) else 0, 1)
+        self._buffer.write_bits(1 if value else 0, 1)
 
     def _choice(self, value, bounds, fields):
         #assert isinstance(value, dict)
@@ -118,7 +124,8 @@ class BitPackedEncoder:
                 self.instance(value[field[0]], field[1])
                 break
         else:
-            raise IncompleteError(self) # unknown choice field name
+            raise IncompleteError(self)
+            # unknown choice field name
 
     def _fourcc(self, value):
         assert isinstance(value, str)
@@ -138,7 +145,7 @@ class BitPackedEncoder:
         if value is not None:
             self.instance(value, typeid)
 
-    def _real32(self):
+    def _real32(self, value):
         assert isinstance(value, float)
         self._buffer.write_unaligned_bytes(struct.pack('>f', value))
 
@@ -157,6 +164,7 @@ class BitPackedEncoder:
                 self.instance(value[field_name], field_type)
             else:
                 raise IncompleteError(self) # missing field_name
+
 
 class VersionedEncoder:
     def __init__(self, output, typeinfos):
